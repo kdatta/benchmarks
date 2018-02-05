@@ -31,6 +31,10 @@ import preprocessing
 IMAGENET_NUM_TRAIN_IMAGES = 1281167
 IMAGENET_NUM_VAL_IMAGES = 50000
 
+MCNN_NUM_TRAIN_IMAGES = 10104
+MCNN_NUM_VAL_IMAGES = 1684
+
+
 
 def create_dataset(data_dir, data_name):
   """Create a Dataset instance based on data_dir and data_name."""
@@ -38,6 +42,7 @@ def create_dataset(data_dir, data_name):
       'synthetic': SyntheticData,
       'imagenet': ImagenetData,
       'cifar10': Cifar10Data,
+      'mcnn': MCNNData,
   }
   if not data_dir:
     data_name = 'synthetic'
@@ -182,3 +187,25 @@ class Cifar10Data(Dataset):
 
   def get_image_preprocessor(self):
     return preprocessing.Cifar10ImagePreprocessor
+
+class MCNNData(Dataset):
+  """Configuration for MCNN dataset."""
+
+  def __init__(self, data_dir=None):
+    if data_dir is None:
+      raise ValueError('Data directory not specified')
+    super(MCNNData, self).__init__('mcnn', 1024, 1280, data_dir=data_dir, num_classes=13)
+
+  def num_examples_per_epoch(self, subset='train'):
+    if subset == 'train':
+      return MCNN_NUM_TRAIN_IMAGES
+    elif subset == 'validation':
+      return MCNN_NUM_VAL_IMAGES
+    else:
+      raise ValueError('Invalid data subset "%s"' % subset)
+
+  def get_image_preprocessor(self):
+    return preprocessing.MCNNImagePreprocessor
+
+  def tf_record_pattern(self, subset):
+    return os.path.join(self.data_dir, '*.tf')

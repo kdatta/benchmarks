@@ -122,7 +122,7 @@ _DEFAULT_PARAMS = {
                    'Enable/disable distortions during image preprocessing. '
                    'These include bbox and color distortions.'),
     'use_datasets':
-        _ParamSpec('boolean', True,
+        _ParamSpec('boolean', False,
                    'Enable use of datasets for input pipeline'),
     'local_parameter_device':
         _ParamSpec('string', 'gpu',
@@ -327,11 +327,11 @@ _DEFAULT_PARAMS = {
 
     # Summary and Save & load checkpoints.
     'summary_verbosity':
-        _ParamSpec('integer', 0,
+        _ParamSpec('integer', 1,
                    'Verbosity level for summary ops. Pass 0 to disable both '
                    'summaries and checkpoints.'),
     'save_summaries_steps':
-        _ParamSpec('integer', 0,
+        _ParamSpec('integer', 1,
                    'How often to save summaries for trained models. Pass 0 to '
                    'disable summaries.'),
     'save_model_secs':
@@ -339,7 +339,7 @@ _DEFAULT_PARAMS = {
                    'How often to save trained models. Pass 0 to disable '
                    'checkpoints.'),
     'train_dir':
-        _ParamSpec('string', None,
+        _ParamSpec('string', '',
                    'Path to session checkpoints. Pass None to disable saving '
                    'checkpoint at the end.'),
     'eval_dir':
@@ -629,9 +629,14 @@ class BenchmarkCNN(object):
     self.params = params
     self.dataset = datasets.create_dataset(self.params.data_dir,
                                            self.params.data_name)
-    self.model = model_config.get_model_config(self.params.model, self.dataset)
+    self.model = model_config.get_model_config(self.params.model,
+                                               self.dataset,
+                                               self.params.data_format,
+                                               self.params.batch_size,
+                                               self.params.learning_rate)
     self.trace_filename = self.params.trace_file
     self.data_format = self.params.data_format
+    self.data_name = self.params.data_name
     self.num_batches = self.params.num_batches
     autotune_threshold = self.params.autotune_threshold if (
         self.params.autotune_threshold) else 1
@@ -1004,7 +1009,9 @@ class BenchmarkCNN(object):
           'sync_queues_step_end_', [main_fetch_group])
 
     local_var_init_op = tf.local_variables_initializer()
+    global_var_init_op = tf.global_variables_initializer()
     variable_mgr_init_ops = [local_var_init_op]
+    variable_mgr_init_ops.append(global_var_init_op)
     with tf.control_dependencies([local_var_init_op]):
       variable_mgr_init_ops.extend(self.variable_mgr.get_post_init_ops())
     local_var_init_op_group = tf.group(*variable_mgr_init_ops)
@@ -1051,7 +1058,6 @@ class BenchmarkCNN(object):
         local_init_op=local_var_init_op_group,
         saver=saver,
         global_step=global_step,
-        summary_op=None,
         save_model_secs=self.params.save_model_secs,
         summary_writer=summary_writer)
 
@@ -1062,6 +1068,7 @@ class BenchmarkCNN(object):
       master_target = self.worker_hosts[0]
     else:
       master_target = self.server.target if self.server else ''
+
     with sv.managed_session(
         master=master_target,
         config=create_config_proto(self.params),
@@ -1335,7 +1342,7 @@ class BenchmarkCNN(object):
         learning_rate = tf.identity(learning_rate, name='learning_rate')
         if self.params.optimizer == 'momentum':
           opt = tf.train.MomentumOptimizer(
-              learning_rate, self.params.momentum, use_nesterov=True)
+              learning_rate, self.params.momentum, use_nesterov=False)
         elif self.params.optimizer == 'sgd':
           opt = tf.train.GradientDescentOptimizer(learning_rate)
         elif self.params.optimizer == 'rmsprop':
@@ -1505,35 +1512,41 @@ class BenchmarkCNN(object):
             dtype=tf.int32, name='synthetic_labels')
 
     with tf.device(self.devices[rel_device_num]):
-      # Rescale from [0, 255] to [0, 2]
-      images = tf.multiply(images, 1./127.5)
-      # Rescale to [-1, 1]
-      images = tf.subtract(images, 1.0)
 
-      if self.data_format == 'NCHW':
-        images = tf.transpose(images, [0, 3, 1, 2])
-      if input_data_type != data_type:
-        images = tf.cast(images, data_type)
-      var_type = tf.float32
-      if data_type == tf.float16 and self.params.fp16_vars:
-        var_type = tf.float16
-      network = convnet_builder.ConvNetBuilder(
-          images, self.dataset.depth, phase_train, self.params.use_tf_layers,
-          self.data_format, data_type, var_type)
-      with tf.variable_scope('cg', custom_getter=network.get_custom_getter()):
-        self.model.add_inference(network)
-        # Add the final fully-connected class layer
-        logits = network.affine(nclass, activation='linear')
-        aux_logits = None
-        if network.aux_top_layer is not None:
-          with network.switch_to_aux_top_layer():
-            aux_logits = network.affine(nclass, activation='linear',
-                                        stddev=0.001)
-      if data_type == tf.float16:
-        # TODO(reedwm): Determine if we should do this cast here.
-        logits = tf.cast(logits, tf.float32)
-        if aux_logits is not None:
-          aux_logits = tf.cast(aux_logits, tf.float32)
+      aux_logits = None
+      if self.data_name == 'mcnn':
+        tf.summary.image('host_images', host_images)
+        logits = self.model.add_inference(host_images)
+      else:
+        # Rescale from [0, 255] to [0, 2]
+        images = tf.multiply(images, 1./127.5)
+        # Rescale to [-1, 1]
+        images = tf.subtract(images, 1.0)
+
+        if self.data_format == 'NCHW':
+          images = tf.transpose(images, [0, 3, 1, 2])
+        if input_data_type != data_type:
+          images = tf.cast(images, data_type)
+        var_type = tf.float32
+        if data_type == tf.float16 and self.params.fp16_vars:
+          var_type = tf.float16
+        network = convnet_builder.ConvNetBuilder(
+            images, self.dataset.depth, phase_train, self.params.use_tf_layers,
+            self.data_format, data_type, var_type)
+        with tf.variable_scope('cg', custom_getter=network.get_custom_getter()):
+          self.model.add_inference(network)
+          # Add the final fully-connected class layer
+          logits = network.affine(nclass, activation='linear')
+          aux_logits = None
+          if network.aux_top_layer is not None:
+            with network.switch_to_aux_top_layer():
+              aux_logits = network.affine(nclass, activation='linear',
+                                          stddev=0.001)
+        if data_type == tf.float16:
+          # TODO(reedwm): Determine if we should do this cast here.
+          logits = tf.cast(logits, tf.float32)
+          if aux_logits is not None:
+            aux_logits = tf.cast(aux_logits, tf.float32)
 
       results = {}  # The return value
       if not phase_train or self.params.print_training_accuracy:
@@ -1547,7 +1560,10 @@ class BenchmarkCNN(object):
       if not phase_train:
         results['logits'] = logits
         return results
-      loss = loss_function(logits, labels, aux_logits=aux_logits)
+      if self.data_name == 'mcnn':
+        loss = self.model.loss(logits, labels, aux_logits=aux_logits)
+      else:
+        loss = loss_function(logits, labels, aux_logits=aux_logits)
       params = self.variable_mgr.trainable_variables_on_device(rel_device_num,
                                                                abs_device_num)
       if data_type == tf.float16 and self.params.fp16_vars:
@@ -1558,7 +1574,10 @@ class BenchmarkCNN(object):
         fp32_params = (tf.cast(p, tf.float32) for p in params)
         l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in fp32_params])
       else:
-        l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in params])
+        if self.data_name == 'mcnn':
+          l2_loss = 0.0
+        else:
+          l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in params])
       weight_decay = self.params.weight_decay
       if weight_decay is not None and weight_decay != 0.:
         loss += weight_decay * l2_loss
@@ -1611,18 +1630,32 @@ class BenchmarkCNN(object):
 
     processor_class = self.dataset.get_image_preprocessor()
     assert processor_class
-    return processor_class(
-        image_size,
-        image_size,
-        self.batch_size * self.batch_group_size,
-        len(self.devices) * self.batch_group_size,
-        dtype=input_data_type,
-        train=(not self.params.eval),
-        distortions=self.params.distortions,
-        resize_method=self.resize_method,
-        shift_ratio=shift_ratio,
-        summary_verbosity=self.params.summary_verbosity,
-        fuse_decode_and_crop=self.params.fuse_decode_and_crop)
+    if self.data_name == 'mcnn':
+      return processor_class(
+            1024,
+            1280,
+            self.batch_size * self.batch_group_size,
+            len(self.devices) * self.batch_group_size,
+            dtype=input_data_type,
+            train=(not self.params.eval),
+            distortions=self.params.distortions,
+            resize_method=self.resize_method,
+            shift_ratio=shift_ratio,
+            summary_verbosity=self.params.summary_verbosity,
+            fuse_decode_and_crop=self.params.fuse_decode_and_crop)
+    else:
+        return processor_class(
+            image_size,
+            image_size,
+            self.batch_size * self.batch_group_size,
+            len(self.devices) * self.batch_group_size,
+            dtype=input_data_type,
+            train=(not self.params.eval),
+            distortions=self.params.distortions,
+            resize_method=self.resize_method,
+            shift_ratio=shift_ratio,
+            summary_verbosity=self.params.summary_verbosity,
+            fuse_decode_and_crop=self.params.fuse_decode_and_crop)
 
   def add_sync_queues_and_barrier(self, name_prefix,
                                   enqueue_after_list):
@@ -1688,6 +1721,6 @@ def setup(params):
     os.environ['KMP_BLOCKTIME'] = str(params.kmp_blocktime)
     os.environ['KMP_SETTINGS'] = str(params.kmp_settings)
     os.environ['KMP_AFFINITY'] = params.kmp_affinity
-    if params.num_intra_threads > 0:
-      os.environ['OMP_NUM_THREADS'] = str(params.num_intra_threads)
+  #  if params.num_intra_threads > 0:
+  #    os.environ['OMP_NUM_THREADS'] = str(params.num_intra_threads)
 

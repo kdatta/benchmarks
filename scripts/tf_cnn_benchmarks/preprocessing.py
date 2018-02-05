@@ -483,10 +483,11 @@ class RecordInputImagePreprocessor(object):
         if not file_names:
           raise ValueError('Found no files in --data_dir matching: {}'
                            .format(glob_pattern))
-        ds = tf.contrib.data.TFRecordDataset(file_names)
-        counter = tf.contrib.data.Dataset.range(self.batch_size)
+        #ds = tf.contrib.data.TFRecordDataset(file_names)
+        ds = tf.data.TFRecordDataset(file_names)
+        counter = tf.data.Dataset.range(self.batch_size)
         counter = counter.repeat()
-        ds = tf.contrib.data.Dataset.zip((ds, counter))
+        ds = tf.data.Dataset.zip((ds, counter))
         ds = ds.map(
             self.parse_and_preprocess,
             num_parallel_calls=self.batch_size)
@@ -773,3 +774,92 @@ class TestImagePreprocessor(object):
         labels[split_index] = tf.parallel_stack(labels[split_index])
 
       return images, labels
+
+
+class MCNNImagePreprocessor(object):
+  """Preprocessor for MCNN images with RecordInput format."""
+
+  def __init__(self,
+               height,
+               width,
+               batch_size,
+               num_splits,
+               dtype,
+               train,
+               distortions,
+               resize_method,
+               shift_ratio,
+               summary_verbosity,
+               fuse_decode_and_crop):
+    self.height = height
+    self.width = width
+    # Channels = 3, hence hard-coded
+    self.depth = 3
+    self.batch_size = batch_size
+    # Not using splits at this time, hence = 1
+    self.num_splits = num_splits
+    self.dtype = dtype
+    self.train = train
+    self.resize_method = resize_method
+    self.shift_ratio = shift_ratio
+    self.distortions = distortions
+    self.fuse_decode_and_crop = fuse_decode_and_crop
+    if self.batch_size % self.num_splits != 0:
+      raise ValueError(
+          ('batch_size must be a multiple of num_splits: '
+           'batch_size %d, num_splits: %d') %
+          (self.batch_size, self.num_splits))
+    self.batch_size_per_split = self.batch_size // self.num_splits
+    self.summary_verbosity = summary_verbosity
+
+  def parse_and_preprocess(self, example_proto, height, width, depth):
+    feature_map = {'label'    : tf.FixedLenFeature([], dtype=tf.int64), 
+                    'image_raw': tf.FixedLenFeature([],  dtype=tf.string)}
+
+    features = tf.parse_single_example(example_proto, feature_map)
+    image = tf.decode_raw(features['image_raw'], tf.uint8)
+    image = tf.reshape(image, [height, width, depth])
+    image  = tf.cast(image, tf.float32) * (1.0/255.0)
+    label = tf.cast(features['label'], tf.int32)
+    label = tf.reshape(label, [1])
+    return label, image
+
+  def minibatch(self, dataset, subset, use_datasets, shift_ratio=-1):
+    if shift_ratio < 0:
+      shift_ratio = self.shift_ratio
+    #with tf.name_scope('batch_processing'):
+      # Build final results per split.
+    images = [[] for _ in range(self.num_splits)]
+    labels = [[] for _ in range(self.num_splits)]
+      
+    record_input = data_flow_ops.RecordInput(
+        file_pattern=dataset.tf_record_pattern(subset),
+#        seed=301,
+        parallelism=4,
+        buffer_size=2*self.batch_size,
+        batch_size=self.batch_size,
+        shift_ratio=shift_ratio,
+        name='record_input')
+    records = record_input.get_yield_op()
+    records = tf.split(records, self.batch_size, 0)
+    records = [tf.reshape(record, []) for record in records]
+    for idx in xrange(self.batch_size):
+      value = records[idx]
+      (label, image) = self.parse_and_preprocess(value, self.height, self.width, self.depth)
+      split_index = idx % self.num_splits
+      labels[split_index].append(label)
+      images[split_index].append(image)
+
+    #tf.summary.image('mcnn_image', images)
+    #tf.summary.scalar('mcnn_labels', labels)
+
+    for split_index in xrange(self.num_splits):
+      images[split_index] = tf.parallel_stack(images[split_index])
+      labels[split_index] = tf.concat(labels[split_index], 0)
+      images[split_index] = tf.cast(images[split_index], self.dtype)
+      images[split_index] = tf.reshape(
+          images[split_index],
+          shape=[self.batch_size_per_split, self.height, self.width, self.depth])
+      labels[split_index] = tf.reshape(labels[split_index], [self.batch_size_per_split])
+
+    return images, labels

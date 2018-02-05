@@ -25,9 +25,10 @@ import overfeat_model
 import resnet_model
 import trivial_model
 import vgg_model
+import mcnn_model
 
 
-def get_model_config(model, dataset):
+def get_model_config(model, dataset, data_format='NCHW', batchsize=8, learning_rate=0.001):
   """Map model name to model network configuration."""
   if 'cifar10' == dataset.name:
     return get_cifar10_model_config(model)
@@ -57,6 +58,8 @@ def get_model_config(model, dataset):
     mc = resnet_model.ResnetModel(model, (3, 4, 23, 3))
   elif model == 'resnet152' or model == 'resnet152_v2':
     mc = resnet_model.ResnetModel(model, (3, 8, 36, 3))
+  elif model == 'mcnn':
+    mc = mcnn_model.MCNNModel(data_format, batchsize, learning_rate)
   else:
     raise KeyError('Invalid model name \'%s\' for dataset \'%s\'' %
                    (model, dataset.name))
