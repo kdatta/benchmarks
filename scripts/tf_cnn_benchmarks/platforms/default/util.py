@@ -13,27 +13,35 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Lenet model configuration.
+"""Utility code for the default platform."""
 
-References:
-  LeCun, Yann, Leon Bottou, Yoshua Bengio, and Patrick Haffner
-  Gradient-based learning applied to document recognition
-  Proceedings of the IEEE (1998)
-"""
-
-from models import model
+import cnn_util
 
 
-class Lenet5Model(model.Model):
+def define_platform_params():
+  """Defines platform-specific parameters.
 
-  def __init__(self):
-    super(Lenet5Model, self).__init__('lenet5', 28, 32, 0.005)
+  Currently there are no platform-specific parameters to be defined.
+  """
+  pass
 
-  def add_inference(self, cnn):
-    # Note: This matches TF's MNIST tutorial model
-    cnn.conv(32, 5, 5)
-    cnn.mpool(2, 2)
-    cnn.conv(64, 5, 5)
-    cnn.mpool(2, 2)
-    cnn.reshape([-1, 64 * 7 * 7])
-    cnn.affine(512)
+
+def get_cluster_manager(params, config_proto):
+  """Returns the cluster manager to be used."""
+  return cnn_util.GrpcClusterManager(params, config_proto)
+
+
+def _initialize(params, config_proto):
+  # Currently, no platform initialization needs to be done.
+  del params, config_proto
+
+
+_is_initalized = False
+
+
+def initialize(params, config_proto):
+  global _is_initalized
+  if _is_initalized:
+    return
+  _is_initalized = True
+  _initialize(params, config_proto)
