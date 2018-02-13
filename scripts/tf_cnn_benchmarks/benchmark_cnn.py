@@ -1089,7 +1089,7 @@ class BenchmarkCNN(object):
     single_session = self.params.variable_update == 'distributed_all_reduce'
     log_fn('SingleSess:  %s' % single_session)
     if single_session:
-      device_list = self.raw_devices_across_tasks()
+      device_list = self.raw_devices_across_tasks(True)
     elif self.params.variable_update == 'horovod':
       device_list = ['horovod/%s:%d' % (self.params.device, idx)
                      for idx in range(self.num_workers)]
