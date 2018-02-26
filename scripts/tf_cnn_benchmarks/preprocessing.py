@@ -863,9 +863,11 @@ class MCNNImagePreprocessor(object):
 
   def minibatch(self, dataset, subset, use_datasets, cache_data, shift_ratio=-1):
     # Build final results per split.
-    images = [[] for _ in range(self.num_splits)]
-    labels = [[] for _ in range(self.num_splits)]
-      
+    #images = [[] for _ in range(self.num_splits)]
+    #labels = [[] for _ in range(self.num_splits)]
+    images = []
+    labels = []
+  
     record_input = data_flow_ops.RecordInput(
         file_pattern=dataset.tf_record_pattern(subset),
 #        seed=301,
@@ -881,16 +883,16 @@ class MCNNImagePreprocessor(object):
       value = records[idx]
       (label, image) = self.parse_and_preprocess(value, self.height, self.width, self.depth)
       split_index = idx % self.num_splits
-      labels[split_index].append(label)
-      images[split_index].append(image)
+      labels.append(label)
+      images.append(image)
 
-    for split_index in xrange(self.num_splits):
-      images[split_index] = tf.stack(images[split_index])
-      labels[split_index] = tf.concat(labels[split_index], 0)
-      images[split_index] = tf.cast(images[split_index], self.dtype)
-      images[split_index] = tf.reshape(
-          images[split_index],
-          shape=[self.batch_size_per_split, self.height, self.width, self.depth])
-      labels[split_index] = tf.reshape(labels[split_index], [self.batch_size_per_split])
+    #for split_index in xrange(self.num_splits):
+    #  images[split_index] = tf.stack(images[split_index])
+    #  labels[split_index] = tf.concat(labels[split_index], 0)
+    #  images[split_index] = tf.cast(images[split_index], self.dtype)
+    #  images[split_index] = tf.reshape(
+    #      images[split_index],
+    #      shape=[self.batch_size_per_split, self.height, self.width, self.depth])
+    #  labels[split_index] = tf.reshape(labels[split_index], [self.batch_size_per_split])
 
     return images, labels
