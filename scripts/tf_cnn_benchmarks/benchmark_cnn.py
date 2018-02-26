@@ -1821,8 +1821,8 @@ class BenchmarkCNN(object):
     with tf.device(self.devices[rel_device_num]):
       aux_logits = None
       if self.data_name == 'mcnn':
-        if self.data_format == 'NCHW':
-          images = tf.transpose(images, [0, 3, 1, 2])
+        #if self.data_format == 'NCHW':
+        #  images = tf.transpose(images, [0, 3, 1, 2])
         if input_data_type != data_type:
           images = tf.cast(images, data_type)  
         tf.summary.image('host_images', host_images)
