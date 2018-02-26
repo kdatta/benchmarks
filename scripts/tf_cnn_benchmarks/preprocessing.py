@@ -885,7 +885,7 @@ class MCNNImagePreprocessor(object):
       images[split_index].append(image)
 
     for split_index in xrange(self.num_splits):
-      images[split_index] = tf.parallel_stack(images[split_index])
+      images[split_index] = tf.stack(images[split_index])
       labels[split_index] = tf.concat(labels[split_index], 0)
       images[split_index] = tf.cast(images[split_index], self.dtype)
       images[split_index] = tf.reshape(
