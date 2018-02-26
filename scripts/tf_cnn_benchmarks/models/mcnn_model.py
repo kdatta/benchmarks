@@ -230,7 +230,7 @@ class MCNNModel(model.Model):
 
         return ip3
 
-    def loss(self, logits, labels, aux_logits):
+    def loss_function(self, logits, labels, aux_logits):
         sparse_labels = tf.reshape(labels, [self.batchsize, 1]) 
         indices = tf.reshape(tf.range(self.batchsize), [self.batchsize, 1]) 
         concated = tf.concat(axis=1, values=[indices, sparse_labels])
