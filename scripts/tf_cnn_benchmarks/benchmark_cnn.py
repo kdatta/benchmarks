@@ -49,6 +49,7 @@ import datasets
 import flags
 import variable_mgr
 import variable_mgr_util
+import datetime
 from cnn_util import log_fn
 from models import model_config
 from platforms import util as platforms_util
@@ -555,8 +556,8 @@ def benchmark_one_step(sess,
   train_time = time.time() - start_time
   step_train_times.append(train_time)
   if step >= 0 and (step == 0 or (step + 1) % params.display_every == 0):
-    log_str = '%i\t%s\t%.*f' % (
-        step + 1, get_perf_timing_str(batch_size, step_train_times),
+    log_str = '%s\t%i\t%s\t%.*f' % (
+        datetime.datetime.now(), step + 1, get_perf_timing_str(batch_size, step_train_times),
         LOSS_AND_ACCURACY_DIGITS_TO_SHOW, lossval)
     if 'top_1_accuracy' in results:
       log_str += '\t%.*f\t%.*f' % (
@@ -841,10 +842,7 @@ class BenchmarkCNN(object):
     self.dataset = dataset or datasets.create_dataset(self.params.data_dir,
                                                       self.params.data_name)
     self.model = model or model_config.get_model_config(self.params.model,
-                                                        self.dataset,
-                                                        self.params.data_format,
-                                                        self.params.batch_size,
-                                                        self.params.learning_rate)
+                                                        self.dataset)
     self.trace_filename = self.params.trace_file
     self.data_format = self.params.data_format
     self.data_name = self.params.data_name
@@ -1410,7 +1408,7 @@ class BenchmarkCNN(object):
             assert global_step_watcher.start_time == 0
             sess.run([execution_barrier])
 
-          header_str = ('Step\tImg/sec\t' +
+          header_str = ('Time\tStep\tImg/sec\t' +
                         self.params.loss_type_to_report.replace('/', ' '))
           if self.params.print_training_accuracy or self.params.forward_only:
             header_str += '\ttop_1_accuracy\ttop_5_accuracy'
@@ -1823,8 +1821,13 @@ class BenchmarkCNN(object):
     with tf.device(self.devices[rel_device_num]):
       aux_logits = None
       if self.data_name == 'mcnn':
+        if self.data_format == 'NCHW':
+          images = tf.transpose(images, [0, 3, 1, 2])
+        if input_data_type != data_type:
+          images = tf.cast(images, data_type)  
         tf.summary.image('host_images', host_images)
-        logits = self.model.add_inference(host_images)
+        with tf.variable_scope('mcnn'):
+            logits = self.model.add_inference(self.batch_size, host_images)
       else:
         # Rescale from [0, 255] to [0, 2]
         images = tf.multiply(images, 1./127.5)
@@ -1885,10 +1888,10 @@ class BenchmarkCNN(object):
         reshaped_params = [tf.reshape(p, (-1,)) for p in fp32_params]
         l2_loss = tf.nn.l2_loss(tf.concat(reshaped_params, axis=0))
       else:
-        if self.data_name == 'mcnn':
-          l2_loss = 0.0
-        else:
-          l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in params])
+        #if self.data_name == 'mcnn':
+        #  l2_loss = 0.0
+        #else:
+        l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in params])
       total_loss = base_loss
       weight_decay = self.params.weight_decay
       if weight_decay is not None and weight_decay != 0.:

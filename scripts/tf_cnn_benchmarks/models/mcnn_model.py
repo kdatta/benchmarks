@@ -1,11 +1,14 @@
 import model
 import tensorflow as tf
 
+def create_mcnn_model():
+  return MCNNModel('NCHW', 8, 0.001)
+
 class MCNNModel(model.Model):
     """MCNN model."""
 
     def __init__(self, data_format, batchsize, learning_rate):
-        super(MCNNModel, self).__init__('mcnn', 1024*1280, batchsize, learning_rate)
+        super(MCNNModel, self).__init__('mcnn', 1024*1280, batchsize, learning_rate, 6)
         self.data_format = data_format
         self.conv_counter = 0
         self.preconv_counter = 0
@@ -13,6 +16,7 @@ class MCNNModel(model.Model):
         self.par_conv_pool_counter = 0
         self.ip_counter = 0
         self.batchsize = batchsize
+        self.lr = learning_rate
 
     def print_activations(self, t):
         print(t.op.name, ' ', t.get_shape().as_list())
@@ -170,7 +174,7 @@ class MCNNModel(model.Model):
         return pool_
 
     #def inference(images):
-    def add_inference(self, images):
+    def add_inference(self, batchsize, images):
         if self.data_format == 'NCHW':
             images = tf.reshape(images, shape=[-1,  3, 1024 , 1280])
         else:
@@ -178,20 +182,20 @@ class MCNNModel(model.Model):
 
         nIn = 3 #Number of input channels
         col1 = self.conv_pool(images, nIn, 16, 5, 5, 1, 1, 64, 64, 64, 64, 'SAME', True, 2)
-        #col2 = self.pc_par_conv_pool('res_2', images, 2, 2, 2, 2, nIn, 16, 5, 5, 1, 1, 32, 32, 32, 32, 'SAME', True, 2)
-        #col3 = self.pc_par_conv_pool('res_4',images, 4, 4, 4, 4, nIn, 16, 5, 5, 1, 1, 16, 16, 16, 16, 'SAME', True, 2)
-        #col4 = self.pc_par_conv_pool('res_8',images, 8, 8, 8, 8, nIn, 32, 5, 5, 1, 1, 8, 8, 8, 8, 'SAME', True, 2)
-        #col5 = self.pc_par_conv_pool('res_16',images, 16, 16, 16, 16, nIn, 32, 5, 5, 1, 1, 4, 4, 4, 4, 'SAME', True, 2)
-        #col6 = self.pc_par_conv_pool('res_32',images, 32, 32, 32, 32, nIn, 32, 5, 5, 1, 1, 2, 2, 2, 2, 'SAME', True, 2)
-        #col7 = self.pc_par_conv_pool('res_64',images, 64, 64, 64, 64, nIn, 64, 5, 5, 1, 1, 1, 1, 1, 1, 'SAME', True, 2)
+        col2 = self.pc_par_conv_pool('res_2', images, 2, 2, 2, 2, nIn, 16, 5, 5, 1, 1, 32, 32, 32, 32, 'SAME', True, 2)
+        col3 = self.pc_par_conv_pool('res_4',images, 4, 4, 4, 4, nIn, 16, 5, 5, 1, 1, 16, 16, 16, 16, 'SAME', True, 2)
+        col4 = self.pc_par_conv_pool('res_8',images, 8, 8, 8, 8, nIn, 32, 5, 5, 1, 1, 8, 8, 8, 8, 'SAME', True, 2)
+        col5 = self.pc_par_conv_pool('res_16',images, 16, 16, 16, 16, nIn, 32, 5, 5, 1, 1, 4, 4, 4, 4, 'SAME', True, 2)
+        col6 = self.pc_par_conv_pool('res_32',images, 32, 32, 32, 32, nIn, 32, 5, 5, 1, 1, 2, 2, 2, 2, 'SAME', True, 2)
+        col7 = self.pc_par_conv_pool('res_64',images, 64, 64, 64, 64, nIn, 64, 5, 5, 1, 1, 1, 1, 1, 1, 'SAME', True, 2)
         #col0 = tf.zeros([4,16,16,20])
         #col1 = tf.zeros([4,16,16,20])
-        col2 = tf.zeros([self.batchsize,16,16,20])
-        col3 = tf.zeros([self.batchsize,16,16,20])
-        col4 = tf.zeros([self.batchsize,32,16,20])
-        col5 = tf.zeros([self.batchsize,32,16,20])
-        col6 = tf.zeros([self.batchsize,32,16,20])
-        col7 = tf.zeros([self.batchsize,64,16,20])
+        #col2 = tf.zeros([batchsize,16,16,20])
+        #col3 = tf.zeros([batchsize,16,16,20])
+        #col4 = tf.zeros([batchsize,32,16,20])
+        #col5 = tf.zeros([batchsize,32,16,20])
+        #col6 = tf.zeros([batchsize,32,16,20])
+        #col7 = tf.zeros([batchsize,64,16,20])
 
         #mergedPool
         if self.data_format == 'NCHW':
@@ -222,8 +226,6 @@ class MCNNModel(model.Model):
                                                      name='biases',
                                                      trainable=True)
         ip3 = tf.matmul(ip0, kernel, transpose_a=False, transpose_b=True) + biases
-        #ip3 = self._inner_product('ip3', ip0, 512, 13)
-
         relulp1 = tf.nn.relu(ip3)
 
         return ip3
@@ -239,8 +241,7 @@ class MCNNModel(model.Model):
         smooth_positives = 1.0 - label_smoothing
         smooth_negatives = label_smoothing / num_classes
         one_hot_labels = one_hot_labels * smooth_positives + smooth_negatives
-        cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=one_hot_labels)
-        #cross_entropy = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels)
+        cross_entropy = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels)
         weight=1.0
         weight = tf.convert_to_tensor(weight, dtype=logits.dtype.base_dtype, name='loss_weight')
         loss = tf.multiply(weight, tf.reduce_mean(cross_entropy), name='value')

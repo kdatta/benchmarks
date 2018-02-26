@@ -71,7 +71,7 @@ _model_name_to_cifar_model = {
 def _get_model_map(dataset_name):
   if 'cifar10' == dataset_name:
     return _model_name_to_cifar_model
-  elif dataset_name in ('imagenet', 'synthetic'):
+  elif dataset_name in ('imagenet', 'synthetic', 'mcnn'):
     return _model_name_to_imagenet_model
   else:
     raise ValueError('Invalid dataset name: %s' % dataset_name)
