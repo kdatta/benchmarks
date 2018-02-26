@@ -826,6 +826,7 @@ class MCNNImagePreprocessor(object):
                resize_method,
                shift_ratio,
                summary_verbosity,
+               distort_color_in_yiq,
                fuse_decode_and_crop):
     self.height = height
     self.width = width
@@ -860,11 +861,8 @@ class MCNNImagePreprocessor(object):
     label = tf.reshape(label, [1])
     return label, image
 
-  def minibatch(self, dataset, subset, use_datasets, shift_ratio=-1):
-    if shift_ratio < 0:
-      shift_ratio = self.shift_ratio
-    #with tf.name_scope('batch_processing'):
-      # Build final results per split.
+  def minibatch(self, dataset, subset, use_datasets, cache_data, shift_ratio=-1):
+    # Build final results per split.
     images = [[] for _ in range(self.num_splits)]
     labels = [[] for _ in range(self.num_splits)]
       
@@ -885,9 +883,6 @@ class MCNNImagePreprocessor(object):
       split_index = idx % self.num_splits
       labels[split_index].append(label)
       images[split_index].append(image)
-
-    #tf.summary.image('mcnn_image', images)
-    #tf.summary.scalar('mcnn_labels', labels)
 
     for split_index in xrange(self.num_splits):
       images[split_index] = tf.parallel_stack(images[split_index])

@@ -31,8 +31,8 @@ import preprocessing
 IMAGENET_NUM_TRAIN_IMAGES = 1281167
 IMAGENET_NUM_VAL_IMAGES = 50000
 
-MCNN_NUM_TRAIN_IMAGES = 10104
-MCNN_NUM_VAL_IMAGES = 1684
+MCNN_NUM_TRAIN_IMAGES = 9093
+MCNN_NUM_VAL_IMAGES = 1011
 
 
 
@@ -192,6 +192,8 @@ class MCNNData(Dataset):
       return MCNN_NUM_TRAIN_IMAGES
     elif subset == 'validation':
       return MCNN_NUM_VAL_IMAGES
+    elif subset == 'test':
+      return MCNN_NUM_VAL_IMAGES
     else:
       raise ValueError('Invalid data subset "%s"' % subset)
 
@@ -199,4 +201,7 @@ class MCNNData(Dataset):
     return preprocessing.MCNNImagePreprocessor
 
   def tf_record_pattern(self, subset):
-    return os.path.join(self.data_dir, '*.tf')
+      if subset == 'train':
+          return os.path.join(self.data_dir, 'train-images/*.tf')
+      else:
+          return os.path.join(self.data_dir, 'test-images/*.tf')
