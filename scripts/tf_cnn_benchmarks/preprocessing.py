@@ -880,8 +880,8 @@ class MCNNImagePreprocessor(object):
       value = records[idx]
       (label, image) = self.parse_and_preprocess(value, self.height, self.width, self.depth)
       split_index = idx % self.num_splits
-      labels.append(label)
-      images.append(image)
+      labels[split_index].append(label)
+      images[split_index].append(image)
 
     for split_index in xrange(self.num_splits):
       images[split_index] = tf.parallel_stack(images[split_index])
