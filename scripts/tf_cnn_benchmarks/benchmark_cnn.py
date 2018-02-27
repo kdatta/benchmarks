@@ -1268,9 +1268,9 @@ class BenchmarkCNN(object):
           'sync_queues_step_end_', [main_fetch_group])
 
     local_var_init_op = tf.local_variables_initializer()
-    global_var_init_op = tf.global_variables_initializer()
+    #global_var_init_op = tf.global_variables_initializer()
     variable_mgr_init_ops = [local_var_init_op]
-    variable_mgr_init_ops.append(global_var_init_op)
+    #variable_mgr_init_ops.append(global_var_init_op)
     with tf.control_dependencies([local_var_init_op]):
       variable_mgr_init_ops.extend(self.variable_mgr.get_post_init_ops())
     if (not self.single_session and self.job_name and
