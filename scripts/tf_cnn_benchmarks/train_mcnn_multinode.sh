@@ -82,7 +82,7 @@ run_instance() {
                         --worker_hosts=$worker_hosts \
                         --job_name=$job_name \
                         --task_index=$task_index \
-                        --variable_update='distributed_all_reduce' > $log 2>&1 &
+                        --variable_update='parameter_server' > $log 2>&1 &
 EOF
         echo "Writing to log: $log"
 }
