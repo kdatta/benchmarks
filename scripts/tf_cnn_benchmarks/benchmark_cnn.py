@@ -94,7 +94,7 @@ flags.DEFINE_integer('num_warmup_batches', None,
                      'number of batches to run before timing')
 flags.DEFINE_integer('autotune_threshold', None,
                      'The autotune threshold for the models')
-flags.DEFINE_integer('num_gpus', 1, 'the number of GPUs to run on')
+flags.DEFINE_integer('num_gpus', 2, 'the number of GPUs to run on')
 flags.DEFINE_string('gpu_indices', '', 'indices of worker GPUs in ring order')
 flags.DEFINE_integer('display_every', 10,
                      'Number of local steps after which progress is printed '
@@ -115,10 +115,10 @@ flags.DEFINE_string('resize_method', 'bilinear',
                     'a round-robin fashion. Other modes support any sizes and '
                     'apply random bbox distortions before resizing (even with '
                     'distortions=False).')
-flags.DEFINE_boolean('distortions', True,
+flags.DEFINE_boolean('distortions', False,
                      'Enable/disable distortions during image preprocessing. '
                      'These include bbox and color distortions.')
-flags.DEFINE_boolean('use_datasets', True,
+flags.DEFINE_boolean('use_datasets', False,
                      'Enable use of datasets for input pipeline')
 flags.DEFINE_string('gpu_thread_mode', 'gpu_private',
                     'Methods to assign GPU host work to threads. '
@@ -135,7 +135,7 @@ flags.DEFINE_boolean('cache_data', False,
                      'many times. The purpose of this flag is to make it '
                      'possible to write regression tests that are not '
                      'bottlenecked by CNS throughput.')
-flags.DEFINE_string('local_parameter_device', 'gpu',
+flags.DEFINE_string('local_parameter_device', 'cpu',
                     'Device to use as parameter server: cpu or gpu. For '
                     'distributed training, it can affect where caching of '
                     'variables happens.')
@@ -1790,8 +1790,9 @@ class BenchmarkCNN(object):
             [host_images.dtype, host_labels.dtype],
             shapes=[images_shape, labels_shape])
         # The CPU-to-GPU copy is triggered here.
-        gpu_compute_stage_op = gpu_compute_stage.put([host_images, host_labels])
-        images, labels = gpu_compute_stage.get()
+        #gpu_compute_stage_op = gpu_compute_stage.put([host_images, host_labels])
+        #images, labels = gpu_compute_stage.get()
+        images, labels = host_images, host_labels
         images = tf.reshape(images, shape=images_shape)
         gpu_compute_stage_ops.append(gpu_compute_stage_op)
       else:

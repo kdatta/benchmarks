@@ -18,9 +18,11 @@ thr=36
 bs=8
 
 ps=skx05-opa
-workers='skx06-opa skx07-opa skx08-opa skx09-opa skx10-opa skx11-opa skx12-opa skx13-opa'
+#workers='skx06-opa skx07-opa skx08-opa skx09-opa skx10-opa skx11-opa skx12-opa skx13-opa'
+workers='skx06-opa skx07-opa'
 ps_host='skx05-opa:2222'
-worker_hosts='skx06-opa:2222,skx07-opa:2222,skx08-opa:2222,skx09-opa:2222,skx10-opa:2222,skx11-opa:2222,skx12-opa:2222,skx13-opa:2222'
+#worker_hosts='skx06-opa:2222,skx07-opa:2222,skx08-opa:2222,skx09-opa:2222,skx10-opa:2222,skx11-opa:2222,skx12-opa:2222,skx13-opa:2222'
+worker_hosts='skx06-opa:2222,skx07-opa:2222'
 
 # Remote copy python/bash scripts
 remote_copy_scripts() {
@@ -81,7 +83,6 @@ run_instance() {
                         --kmp_affinity=$KMP_AFFINITY \
                         --summary_verbosity=0 \
                         --save_summaries_steps=0 \
-                        --train_dir='/tmp/tf_cnn_benchmarks/eval' \
                         --ps_hosts=$ps_host \
                         --worker_hosts=$worker_hosts \
                         --job_name=$job_name \
