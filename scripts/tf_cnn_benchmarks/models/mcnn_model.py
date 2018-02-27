@@ -175,6 +175,11 @@ class MCNNModel(model.Model):
 
     #def inference(images):
     def add_inference(self, batchsize, images):
+        print "******************************"
+        print "******************************"
+        print "inside add_inference"
+        print "******************************"
+        print "******************************"
         if self.data_format == 'NCHW':
             images = tf.reshape(images, shape=[-1,  3, 1024 , 1280])
         else:
