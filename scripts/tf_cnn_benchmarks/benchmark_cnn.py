@@ -1323,11 +1323,11 @@ class BenchmarkCNN(object):
       # don't set this in non-distributed mode, because in non-distributed mode,
       # local_var_init_op_group may itself initialize global variables (such as
       # in replicated mode).
+      ready_for_local_init_op = tf.report_uninitialized_variables(
+          tf.global_variables())
       print "***********************"
       print "here"
       print "***********************"
-      ready_for_local_init_op = tf.report_uninitialized_variables(
-          tf.global_variables())
     if self.params.variable_update == 'horovod':
       import horovod.tensorflow as hvd  # pylint: disable=g-import-not-at-top
       bcast_global_variables_op = hvd.broadcast_global_variables(0)
