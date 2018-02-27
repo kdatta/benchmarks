@@ -1325,7 +1325,6 @@ class BenchmarkCNN(object):
       # in replicated mode).
       ready_for_local_init_op = tf.report_uninitialized_variables(
           tf.global_variables())
-      log_fn('*********Here******')
     if self.params.variable_update == 'horovod':
       import horovod.tensorflow as hvd  # pylint: disable=g-import-not-at-top
       bcast_global_variables_op = hvd.broadcast_global_variables(0)
@@ -1827,7 +1826,6 @@ class BenchmarkCNN(object):
         if input_data_type != data_type:
           images = tf.cast(images, data_type)  
         tf.summary.image('host_images', host_images)
-        #with tf.variable_scope('mcnn%s' % rel_device_num):
         logits = self.model.add_inference(self.batch_size, host_images)
       else:
         # Rescale from [0, 255] to [0, 2]

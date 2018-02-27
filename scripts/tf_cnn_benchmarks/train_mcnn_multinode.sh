@@ -81,7 +81,8 @@ run_instance() {
                         --ps_hosts=$ps_host \
                         --worker_hosts=$worker_hosts \
                         --job_name=$job_name \
-                        --task_index=$task_index > $log 2>&1 &
+                        --task_index=$task_index \
+                        --variable_update='distributed_all_reduce' > $log 3>&1 &
 EOF
         echo "Writing to log: $log"
 }
