@@ -79,7 +79,6 @@ run_instance() {
                         --distortions=False \
                         --trace_file='$results_dir/mcnn-trace' \
                         --sync_on_finish=False \
-                        --device=cpu \
                         --mkl=True \
                         --kmp_affinity=$KMP_AFFINITY \
                         --ps_hosts=$ps_host \
