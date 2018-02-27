@@ -29,13 +29,15 @@ remote_copy_scripts() {
         cd $script_home
         git pull upstream mcnn
         #rsync -avz --exclude '*.sw*' $script_home $ps:$script_home/../
-        #for w in $workers
-        #do
+        for w in $workers
+        do
         #        if [ "$w" != "$HOSTNAME" ]
         #        then
         #                rsync -avz --exclude '*.sw*' $script_home $w:$script_home/../
         #        fi
-        #done
+            cd $script_home
+            git pull upstream mcnn
+        done
 }
 
 # SSH command
