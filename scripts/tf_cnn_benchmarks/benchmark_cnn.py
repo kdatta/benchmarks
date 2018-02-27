@@ -1888,9 +1888,6 @@ class BenchmarkCNN(object):
         reshaped_params = [tf.reshape(p, (-1,)) for p in fp32_params]
         l2_loss = tf.nn.l2_loss(tf.concat(reshaped_params, axis=0))
       else:
-        #if self.data_name == 'mcnn':
-        #  l2_loss = 0.0
-        #else:
         l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in params])
       total_loss = base_loss
       weight_decay = self.params.weight_decay
