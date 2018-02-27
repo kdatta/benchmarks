@@ -1794,7 +1794,7 @@ class BenchmarkCNN(object):
         #images, labels = gpu_compute_stage.get()
         images, labels = host_images, host_labels
         images = tf.reshape(images, shape=images_shape)
-        gpu_compute_stage_ops.append(gpu_compute_stage_op)
+        #gpu_compute_stage_ops.append(gpu_compute_stage_op)
       else:
         # Minor hack to avoid H2D copy when using synthetic data
         image_size = self.model.get_image_size()
