@@ -1325,7 +1325,7 @@ class BenchmarkCNN(object):
       # in replicated mode).
       ready_for_local_init_op = tf.report_uninitialized_variables(
           tf.global_variables())
-      print "here"
+      log_fn('*********Here******')
     if self.params.variable_update == 'horovod':
       import horovod.tensorflow as hvd  # pylint: disable=g-import-not-at-top
       bcast_global_variables_op = hvd.broadcast_global_variables(0)
