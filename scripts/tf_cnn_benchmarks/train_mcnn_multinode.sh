@@ -81,6 +81,9 @@ run_instance() {
                         --sync_on_finish=False \
                         --mkl=True \
                         --kmp_affinity=$KMP_AFFINITY \
+                        --summary_verbosity=3 \
+                        --save_summaries_steps=1 \
+                        --train_dir='/tmp/tf_cnn_benchmarks/eval' \
                         --ps_hosts=$ps_host \
                         --worker_hosts=$worker_hosts \
                         --job_name=$job_name \
