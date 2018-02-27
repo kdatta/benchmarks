@@ -1826,8 +1826,8 @@ class BenchmarkCNN(object):
         if input_data_type != data_type:
           images = tf.cast(images, data_type)  
         tf.summary.image('host_images', host_images)
-        with tf.variable_scope('mcnn%s', rel_device_num):
-            logits = self.model.add_inference(self.batch_size, host_images)
+        with tf.variable_scope('mcnn%s' % rel_device_num):
+          logits = self.model.add_inference(self.batch_size, host_images)
       else:
         # Rescale from [0, 255] to [0, 2]
         images = tf.multiply(images, 1./127.5)
