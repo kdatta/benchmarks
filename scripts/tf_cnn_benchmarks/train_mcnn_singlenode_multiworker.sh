@@ -11,7 +11,7 @@
 ./kill_multiple_workers.sh
 
 #itr=22734
-itr=50
+itr=5000
 data_dir=/data01/kushal/novartis/mcnn
 script_home=/home/bduser/kushal/benchmarks/scripts/tf_cnn_benchmarks
 script=$script_home/tf_cnn_benchmarks.py

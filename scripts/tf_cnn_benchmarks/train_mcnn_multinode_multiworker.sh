@@ -9,11 +9,9 @@
 #sudo cpupower frequency-info
 #sudo cpupower frequency-set -d 2.1G -u 3.7G -g performance
 
-./kill_all_workers.sh
-
 #itr=22734
 itr=50
-data_dir=/data01/kushal/novartis/mcnn/train-images/
+data_dir=/data01/kushal/novartis/mcnn
 script_home=/home/bduser/kushal/benchmarks/scripts/tf_cnn_benchmarks
 script=$script_home/tf_cnn_benchmarks.py
 
@@ -21,11 +19,10 @@ thr=9
 bs=8
 
 ps=skx05-opa
+workers='skx06-opa skx04-opa skx07-opa skx08-opa skx09-opa skx10-opa skx11-opa skx12-opa'
 pshost='skx05-opa:2222'
-workers='skx06-opa skx07-opa'
-#worker_hosts='skx06-opa:2222,skx06-opa:2223,skx06-opa:2224,skx06-opa:2225,skx07-opa:2222,skx07-opa:2223,skx07-opa:2224,skx07-opa:2225,skx08-opa:2222,skx08-opa:2223,skx08-opa:2224,skx08-opa:2225,skx09-opa:2222,skx09-opa:2223,skx09-opa:2224,skx09-opa:2225'
+worker_hosts='skx06-opa:2222,skx06-opa:2223,skx06-opa:2224,skx06-opa:2225,skx04-opa:2222,skx04-opa:2223,skx04-opa:2224,skx04-opa:2225,skx07-opa:2222,skx07-opa:2223,skx07-opa:2224,skx07-opa:2225,skx08-opa:2222,skx08-opa:2223,skx08-opa:2224,skx08-opa:2225,skx09-opa:2222,skx09-opa:2223,skx09-opa:2224,skx09-opa:2225,skx10-opa:2222,skx10-opa:2223,skx10-opa:2224,skx10-opa:2225,skx11-opa:2222,skx11-opa:2223,skx11-opa:2224,skx11-opa:2225,skx12-opa:2222,skx12-opa:2223,skx12-opa:2224,skx12-opa:2225'
 #worker_hosts='skx06-opa:2222,skx06-opa:2223,skx06-opa:2224,skx06-opa:2225,skx07-opa:2222,skx07-opa:2223,skx07-opa:2224,skx07-opa:2225'
-worker_hosts='skx06-opa:2222,skx07-opa:2222'
 
 results_dir='/tmp/tf_cnn_benchmarks/results_'
 results_dir+=`date +"%H%M%S%m%d%y"`
@@ -41,6 +38,8 @@ run_instance() {
 	echo $job_name,$host,$log,$task_index,$kmp_affinity,$numactl,$pshost
         ssh $host << EOF
 		mkdir -p $results_dir
+                unset HTTP_PROXY
+                unset HTTPS_PROXY
                 unset http_proxy
                 unset https_proxy
                 export OMP_NUM_THREADS=$thr
@@ -69,7 +68,8 @@ run_instance() {
                         --ps_hosts=$pshost \
                         --worker_hosts=$worker_hosts \
                         --job_name=$job_name \
-                        --task_index=$task_index > $log 2>&1 &
+                        --task_index=$task_index \
+                        --variable_update='parameter_server' > $log 2>&1 &
 EOF
         echo "Writing to log: $log"
 }
@@ -89,12 +89,12 @@ for w in $workers
 do
 	run_instance 'worker' $w "$results_dir/worker-$w-0.out" $count $KMP_AFFINITY_1 "numactl -m 0"
 	count=$((count+1))
-	#run_instance 'worker' $w "$results_dir/worker-$w-1.out" $count $KMP_AFFINITY_2 "numactl -m 0"
-	#count=$((count+1))
-	#run_instance 'worker' $w "$results_dir/worker-$w-2.out" $count $KMP_AFFINITY_3 "numactl -m 1"
-	#count=$((count+1))
-	#run_instance 'worker' $w "$results_dir/worker-$w-3.out" $count $KMP_AFFINITY_4 "numactl -m 1"
-	#count=$((count+1))
+	run_instance 'worker' $w "$results_dir/worker-$w-1.out" $count $KMP_AFFINITY_2 "numactl -m 0"
+	count=$((count+1))
+	run_instance 'worker' $w "$results_dir/worker-$w-2.out" $count $KMP_AFFINITY_3 "numactl -m 1"
+	count=$((count+1))
+	run_instance 'worker' $w "$results_dir/worker-$w-3.out" $count $KMP_AFFINITY_4 "numactl -m 1"
+	count=$((count+1))
 done
 
 tail -100f $results_dir/worker-skx06-opa-0.out

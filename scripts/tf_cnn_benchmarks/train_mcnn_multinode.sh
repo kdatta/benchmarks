@@ -9,7 +9,7 @@
 #sudo cpupower frequency-set -d 2.1G -u 3.7G -g performance
 
 #itr=22734
-itr=50
+itr=100
 data_dir=/data01/kushal/novartis/mcnn
 script_home=/home/bduser/kushal/benchmarks/scripts/tf_cnn_benchmarks
 script=$script_home/tf_cnn_benchmarks.py
@@ -18,25 +18,18 @@ thr=36
 bs=8
 
 ps=skx05-opa
-workers='skx06-opa skx07-opa skx08-opa skx09-opa skx10-opa skx11-opa skx12-opa skx13-opa'
+workers='skx06-opa skx04-opa skx07-opa skx08-opa skx09-opa skx10-opa skx11-opa skx12-opa'
 #workers='skx06-opa skx07-opa'
 ps_host='skx05-opa:2222'
-worker_hosts='skx06-opa:2222,skx07-opa:2222,skx08-opa:2222,skx09-opa:2222,skx10-opa:2222,skx11-opa:2222,skx12-opa:2222,skx13-opa:2222'
+worker_hosts='skx06-opa:2222,skx04-opa:2222,skx07-opa:2222,skx08-opa:2222,skx09-opa:2222,skx10-opa:2222,skx11-opa:2222,skx12-opa:2222'
 #worker_hosts='skx06-opa:2222,skx07-opa:2222'
 
 # Remote copy python/bash scripts
 remote_copy_scripts() {
-        cd $script_home
-        git pull upstream mcnn
-        #rsync -avz --exclude '*.sw*' $script_home $ps:$script_home/../
+        cd $script_home && git pull upstream mcnn
         for w in $workers
         do
-        #        if [ "$w" != "$HOSTNAME" ]
-        #        then
-        #                rsync -avz --exclude '*.sw*' $script_home $w:$script_home/../
-        #        fi
-            cd $script_home
-            git pull upstream mcnn
+            cd $script_home && git pull upstream mcnn
         done
 }
 
@@ -58,7 +51,6 @@ run_instance() {
                 unset HTTPS_PROXY
                 unset http_proxy
                 unset https_proxy
-                sh $script_home/kill_local.sh
                 export OMP_NUM_THREADS=$thr
                 nohup numactl -l python $script \
                         --model=mcnn \
@@ -82,8 +74,8 @@ run_instance() {
                         --device=cpu \
                         --mkl=True \
                         --kmp_affinity=$KMP_AFFINITY \
-                        --summary_verbosity=0 \
-                        --save_summaries_steps=0 \
+                        --summary_verbosity=1 \
+                        --save_summaries_steps=1 \
                         --ps_hosts=$ps_host \
                         --worker_hosts=$worker_hosts \
                         --job_name=$job_name \
@@ -97,6 +89,12 @@ results_dir='/tmp/tf_cnn_benchmarks/results_'
 results_dir+=`date +"%H%M%S%m%d%y"`
 
 remote_copy_scripts
+
+for w in $workers
+do
+        sh $script_home/kill_local.sh
+done
+pssh -i -h ~/hosts.txt "ps -eaf | grep python"
 
 #    KMP_AFFINITY="granularity=fine,explicit,proclist=[0-19,40-59]"
 KMP_AFFINITY="granularity=fine,compact,1,0"
