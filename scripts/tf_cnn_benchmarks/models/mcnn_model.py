@@ -54,7 +54,8 @@ class MCNNModel(model.Model):
     def conv_(self, name_prefix, inp, nIn, nOut, kH, kW, dH, dW, padType, padding, pV):
         self.conv_counter += 1
         name = name_prefix + '_conv_' + str(self.conv_counter)
-        with tf.name_scope(name) as scope:
+        #with tf.name_scope(name) as scope:
+	with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
             if self.data_format == 'NCHW':
                 ksize = [1, 1, kH, kW]
                 strides = [1, 1, dH, dW]
@@ -109,7 +110,8 @@ class MCNNModel(model.Model):
     def _inner_product(self, prefix, inp, nIn, nOut): 
         name = prefix + '_ip_' + str(self.ip_counter) 
         self.ip_counter += 1 
-        with tf.name_scope(name) as scope:  
+        #with tf.name_scope(name) as scope:  
+        with tf.variable_scope(name, reuse=tf.AUTO_REUSE) as scope:  
             #  kernel_shape = [kH, kW, nIn, nOut]
             # kernel = xavier_initializer(kernel_shape, nIn, nOut, factor=2.0, mode='FAN_AVG',
             #                                                           dtype=dtypes.float32)
